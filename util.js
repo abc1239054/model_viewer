@@ -1,3 +1,20 @@
+function updateState() {
+    var speed = 0.2;
+    if (state.ui.pressedKeys[37]) {
+      // left
+      state.app.eye.x += speed;
+    } else if (state.ui.pressedKeys[39]) {
+      // right
+      state.app.eye.x -= speed;
+    } else if (state.ui.pressedKeys[40]) {
+      // down
+      state.app.eye.y += speed;
+    } else if (state.ui.pressedKeys[38]) {
+      // up
+      state.app.eye.y -= speed;
+    }
+  }
+
 function keydown(event) {
 	state.ui.pressedKeys[event.keyCode] = true;
 }

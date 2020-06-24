@@ -101,6 +101,7 @@ function main() {
 		now *= 0.001;  // convert to seconds
 		const deltaTime = now - then;
 		then = now;
+		updateState();
 
 		drawScene(gl, programInfo, buffers, deltaTime, model);
 
