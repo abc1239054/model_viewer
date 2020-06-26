@@ -53,6 +53,7 @@ html, body, h3{
     display:inline-block;
     position: absolute;
     right: 10px;
+    border-radius: 5px;
 }
 
 .colorInput {
@@ -60,7 +61,6 @@ html, body, h3{
 }
 
 .value {
-    display:inline-block;
     position: absolute;
     right: 10px;
 }
@@ -68,3 +68,4 @@ html, body, h3{
 span {
     display:inline-block;
 }
+

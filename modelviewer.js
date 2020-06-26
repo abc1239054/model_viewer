@@ -5,6 +5,9 @@ var state = {
 	specularPower: 16.0,
 	lightColor: [1.0, 1.0, 1.0],
 	lightPosition: [1.0, 1.0, 1.0],
+	ambient: [0.25, 0.0, 0.0],
+	enableGamma: false,
+	showNormals: false,
 	ui: {
 		dragging: false,
 		mouse: {
@@ -93,7 +96,10 @@ function main() {
 	uniform vec3 specularColor3;
 	uniform float specularPower;
 	uniform vec3 lightColor3;
-	
+	uniform vec3 ambient3;
+
+	uniform bool enableGamma;
+	uniform bool showNormals;
 
 	varying vec4 vColor;
 	varying vec3 vNormal;
@@ -105,7 +111,7 @@ function main() {
 		vec4 diffuseColor = vec4(diffuseColor3, 1.0);
 		vec4 lightColor = vec4(lightColor3, 1.0);
 		vec4 specularColor = vec4(specularColor3, 1.0);
-		vec4 ambient = vec4(0.2, 0.0, 0.0, 1.0);
+		vec4 ambient = vec4(ambient3, 1.0);
 
 		vec3 l = normalize(lightDir);
     	vec3 n = normalize(normal);
@@ -123,9 +129,25 @@ function main() {
 			specular = specularColor * pow(max(dot(h, n), 0.0), specularPower) * lightColor;
 		}
 	
-		vec4 color = ambient + diffuse + specular;;
+		vec4 color;
 
-      	gl_FragColor = color;
+		if (showNormals) {
+			color = vColor + diffuse + specular;
+		} 
+		else {
+			color = ambient + diffuse + specular;
+		}
+
+		vec4 clibratedColor;
+
+		if (enableGamma) {
+			clibratedColor = pow(color, vec4(1.0 / 2.2, 1.0 / 2.2, 1.0 / 2.2, 1.0));
+		} 
+		else {
+			clibratedColor = color;
+		}
+
+      	gl_FragColor = clibratedColor;
     }
   `;
 
@@ -152,6 +174,9 @@ function main() {
 			specularPower: gl.getUniformLocation(shaderProgram, 'specularPower'),
 			lightColor: gl.getUniformLocation(shaderProgram, 'lightColor3'),
 			lightPosition: gl.getUniformLocation(shaderProgram, 'lightPosition'),
+			ambient: gl.getUniformLocation(shaderProgram, 'ambient3'),
+			enableGamma: gl.getUniformLocation(shaderProgram, 'enableGamma'),
+			showNormals: gl.getUniformLocation(shaderProgram, 'showNormals'),
 		},
 	};
 
@@ -360,6 +385,16 @@ function drawScene(gl, programInfo, buffers, deltaTime, model) {
 	gl.uniform3fv(
 		programInfo.uniformLocations.lightPosition,
 		state.lightPosition);
+	gl.uniform3fv(
+		programInfo.uniformLocations.ambient,
+		state.ambient);
+	gl.uniform1i(
+		programInfo.uniformLocations.enableGamma,
+		state.enableGamma);
+	gl.uniform1i(
+		programInfo.uniformLocations.showNormals,
+		state.showNormals);
+
 
 	{
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indexBuffer);
@@ -516,7 +551,10 @@ function updateState(){
 	state.lightPosition = [parseFloat($('#lightPosition > #X').val()), 
 	parseFloat($('#lightPosition > #Y').val()),
 	parseFloat($('#lightPosition > #Z').val())];
-	console.log(state.specularPower);
+	state.ambient = $('#ambient > input').val().hexToRGB();
+	state.enableGamma = $('#enableGamma > input').prop('checked');
+	state.showNormals = $('#showNormals > input').prop('checked');
+	//console.log(state.enableGamma);
 }
 
 String.prototype.hexToRGB = function(){
