@@ -1,16 +1,82 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8">
-        <title>ModelViewer</title>
-        <link rel="stylesheet" type="text/css" href="style.css">
-    </head>
-    <body>
+
+<head>
+    <meta charset="utf-8">
+    <title>ModelViewer</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+    <div id='main'>
         <canvas id="glcanvas" width=1280 height=720>
-          Your browser doesn't appear to support the HTML5 <code>&lt;canvas&gt;</code> element.
+            Your browser doesn't appear to support the HTML5 <code>&lt;canvas&gt;</code> element.
         </canvas>
-    </body>
-    <script src="gl-matrix.js"></script>
-    <script src="util.js"></script>
-    <script src="modelviewer.js"></script>
+        <div id='controlpanel'>
+            <h3>Settings</h3>
+            <hr/>
+            <div id='material' class='settingGroup'>
+                <div id="diffuse" class="settingItem">
+                    Diffuse color
+                    <span class="color"></span>
+                    <input type="color" class="colorInput" value="#ffffff">
+                </div>
+                <div id="specular" class="settingItem">
+                    Specular color
+                    <span class="color"></span>
+                    <input type="color" class="colorInput" value="#ffffff" >
+                </div>
+                <div id="specularPower" class="settingItem">
+                    Specular power                 
+                    <input type="range" class="valueInput" value="16.00" min="0.00" max="100.00" step="0.01" >
+                    <span class="value">16.00</span>
+                </div>
+                <div id="lightColor" class="settingItem">
+                    Light color
+                    <span class="color"></span>
+                    <input type="color" class="colorInput" value="#ffffff" >
+                </div>
+                <div id="lightPosition" class="settingItem">
+                    Light position                          
+                    <input id="X" type="range" class="valueInput" value="1" min="-10" max="10" step="0.01" >
+                    <span>X</span> 
+                    <span class="value">1.00</span>
+
+                    <input id="Y" type="range" class="valueInput" value="1" min="-10" max="10" step="0.01" >
+                    <span>Y</span>
+                    <span class="value">1.00</span>
+                
+                    <input id="Z" type="range" class="valueInput" value="1" min="-10" max="10" step="0.01" >
+                    <span>Z</span>
+                    <span class="value">1.00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script>
+    $(".color").each(function(){
+        var color = $(this);
+        var colorInput = $(this).siblings(".colorInput");
+        colorInput.on('input', function(event){
+            color.css('background-color', $(this).val());
+        });
+        color.click(function(event){
+            colorInput.click();
+        });
+    });
+    $(".value").each(function(){
+        var value = $(this);
+        var valueInput = $(this).prevAll(".valueInput").first();
+        valueInput.on('input',function(event){
+            value.text(valueInput.val());
+        });
+    });
+
+</script>
+<script src="gl-matrix.js"></script>
+<script src="util.js"></script>
+<script src="modelviewer.js"></script>
+
 </html>

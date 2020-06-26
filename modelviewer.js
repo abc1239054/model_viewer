@@ -1,5 +1,10 @@
 var state = {
 	cubeRotation: 0.0,
+	diffuseColor: [1.0, 1.0, 1.0],
+	specularColor: [1.0, 1.0, 1.0],
+	specularPower: 16.0,
+	lightColor: [1.0, 1.0, 1.0],
+	lightPosition: [1.0, 1.0, 1.0],
 	ui: {
 		dragging: false,
 		mouse: {
@@ -42,24 +47,85 @@ function main() {
 	// Vertex shader program
 
 	const vsSource = `
+	precision lowp float;
+
 	attribute vec3 aVertexPosition;
 	attribute vec3 aNormal;
 	//attribute vec4 aVertexColor;
-    uniform mat4 uModelViewMatrix;
-	uniform mat4 uProjectionMatrix;
-	varying lowp vec4 vColor;
+    uniform mat4 mv;
+	uniform mat4 p;
+	uniform mat4 mvp;
+	uniform vec3 lightPosition;
+
+	varying vec4 vColor;
+	varying vec3 vNormal;
+	varying vec3 normal;
+	varying vec3 lightDir;
+	varying vec3 eye;
+
     void main() {
-	  gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aVertexPosition, 1.0);
-	  vColor =  vec4(0.5 * aNormal + 0.5, 1.0);
+		vNormal = aNormal;
+
+		// Calculate the view-space position 
+    	vec3 position = vec3(mv * vec4(aVertexPosition, 1.0));
+
+    	// Calculate the view-space normal
+    	normal = vec3(mv * vec4(aNormal, 0.0));
+
+    	// Calculate the view-space light direction
+    	lightDir = lightPosition - position;
+
+    	// Calculate the vector to viewer's eye
+    	eye = -position;
+
+		gl_Position = mvp * vec4(aVertexPosition, 1.0);
+		  
+	  	vColor =  vec4(0.5 * aNormal + 0.5, 1.0);
     }
   `;
 
 	// Fragment shader program
 
 	const fsSource = `
-	varying lowp vec4 vColor;
+	precision lowp float;
+
+	uniform vec3 diffuseColor3;
+	uniform vec3 specularColor3;
+	uniform float specularPower;
+	uniform vec3 lightColor3;
+	
+
+	varying vec4 vColor;
+	varying vec3 vNormal;
+	varying vec3 normal;
+	varying vec3 lightDir;
+	varying vec3 eye;
+
     void main() {
-      gl_FragColor = vColor;
+		vec4 diffuseColor = vec4(diffuseColor3, 1.0);
+		vec4 lightColor = vec4(lightColor3, 1.0);
+		vec4 specularColor = vec4(specularColor3, 1.0);
+		vec4 ambient = vec4(0.2, 0.0, 0.0, 1.0);
+
+		vec3 l = normalize(lightDir);
+    	vec3 n = normalize(normal);
+		vec3 e = normalize(eye);
+		
+		vec3 r = reflect(-e, n);
+
+		float lambertian = max(dot(l, n), 0.0);
+    	vec4 diffuse = lambertian * diffuseColor * lightColor;
+
+		vec4 specular = vec4(0.0);
+		
+		if (lambertian > 0.0) {
+			vec3 h = normalize(l + e);
+			specular = specularColor * pow(max(dot(h, n), 0.0), specularPower) * lightColor;
+		}
+	
+		vec4 color = ambient + diffuse + specular;;
+
+      	gl_FragColor = color;
     }
   `;
 
@@ -78,8 +144,14 @@ function main() {
 			//vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor')
 		},
 		uniformLocations: {
-			projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
-			modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+			p: gl.getUniformLocation(shaderProgram, 'p'),
+			mv: gl.getUniformLocation(shaderProgram, 'mv'),
+			mvp: gl.getUniformLocation(shaderProgram, 'mvp'),
+			diffuseColor: gl.getUniformLocation(shaderProgram, 'diffuseColor3'),
+			specularColor: gl.getUniformLocation(shaderProgram, 'specularColor3'),
+			specularPower: gl.getUniformLocation(shaderProgram, 'specularPower'),
+			lightColor: gl.getUniformLocation(shaderProgram, 'lightColor3'),
+			lightPosition: gl.getUniformLocation(shaderProgram, 'lightPosition'),
 		},
 	};
 
@@ -193,11 +265,11 @@ function drawScene(gl, programInfo, buffers, deltaTime, model) {
 	const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
 	const zNear = 0.1;
 	const zFar = 100.0;
-	const projectionMatrix = glMatrix.mat4.create();
+	const p = glMatrix.mat4.create();
 
 	// note: glmatrix.js always has the first argument
 	// as the destination to receive the result.
-	glMatrix.mat4.perspective(projectionMatrix,
+	glMatrix.mat4.perspective(p,
 		fieldOfView,
 		aspect,
 		zNear,
@@ -205,14 +277,14 @@ function drawScene(gl, programInfo, buffers, deltaTime, model) {
 
 	// Set the drawing position to the "identity" point, which is
 	// the center of the scene.
-	const modelViewMatrix = glMatrix.mat4.create();
+	const mv = glMatrix.mat4.create();
 
 	// Now move the drawing position a bit to where we want to
 	// start drawing the square.
 
 
-	glMatrix.mat4.translate(modelViewMatrix,     // destination matrix
-		modelViewMatrix,     // matrix to translate
+	glMatrix.mat4.translate(mv,     // destination matrix
+		mv,     // matrix to translate
 		[0.0, 0.0, -3.0]);  // amount to translate
 
 	//glMatrix.mat4.rotate(modelViewMatrix,  // destination matrix
@@ -220,15 +292,19 @@ function drawScene(gl, programInfo, buffers, deltaTime, model) {
 	//	cubeRotation,   // amount to rotate in radians
 	//	[0, 0, 1]); 
 
-	glMatrix.mat4.rotateX(modelViewMatrix,  // destination matrix
-		modelViewMatrix,  // matrix to rotate
+	glMatrix.mat4.rotateX(mv,  // destination matrix
+		mv,  // matrix to rotate
 		state.app.angle.x,// amount to rotate in radians
 	);
 
-	glMatrix.mat4.rotateY(modelViewMatrix,  // destination matrix
-		modelViewMatrix,  // matrix to rotate
+	glMatrix.mat4.rotateY(mv,  // destination matrix
+		mv,  // matrix to rotate
 		state.app.angle.y,// amount to rotate in radians
 	);
+
+	const mvp = glMatrix.mat4.create();
+
+	glMatrix.mat4.mul(mvp, p, mv);
 
 
 	// Tell WebGL how to pull out the positions from the position
@@ -249,6 +325,8 @@ function drawScene(gl, programInfo, buffers, deltaTime, model) {
 
 	}
 
+	
+
 	// Tell WebGL to use our program when drawing
 
 	gl.useProgram(programInfo.program);
@@ -256,13 +334,32 @@ function drawScene(gl, programInfo, buffers, deltaTime, model) {
 	// Set the shader uniforms
 
 	gl.uniformMatrix4fv(
-		programInfo.uniformLocations.projectionMatrix,
+		programInfo.uniformLocations.p,
 		false,
-		projectionMatrix);
+		p);
 	gl.uniformMatrix4fv(
-		programInfo.uniformLocations.modelViewMatrix,
+		programInfo.uniformLocations.mv,
 		false,
-		modelViewMatrix);
+		mv);
+	gl.uniformMatrix4fv(
+		programInfo.uniformLocations.mvp,
+		false,
+		mvp);
+	gl.uniform3fv(
+		programInfo.uniformLocations.diffuseColor,
+		state.diffuseColor);
+	gl.uniform3fv(
+		programInfo.uniformLocations.specularColor,
+		state.specularColor);
+	gl.uniform1f(
+		programInfo.uniformLocations.specularPower,
+		state.specularPower);
+	gl.uniform3fv(
+		programInfo.uniformLocations.lightColor,
+		state.lightColor);
+	gl.uniform3fv(
+		programInfo.uniformLocations.lightPosition,
+		state.lightPosition);
 
 	{
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indexBuffer);
@@ -338,23 +435,24 @@ function loadModel(file) {
 					numOfIndices: 0,
 					numOfNormals: 0,
 				};
+				
 				var allText = rawFile.responseText;
 				var lines = allText.split('\n');
 
-				const callback = (line) => {
+				for( var i=0; i<lines.length; i++){
+					var line = lines[i];
 					if (line[0] == 'v') {
 						var vertices = line.split(' ');
 						model.vertices.push
 							(parseFloat(vertices[1]),
-								parseFloat(vertices[2]),
-								parseFloat(vertices[3]));
+							parseFloat(vertices[2]),
+							parseFloat(vertices[3]));
 					}
 					else if (line[0] == 'f') {
 						var indices = line.split(' ');
 						model.indices.push(indices[1] - 1, indices[2] - 1, indices[3] - 1);
 					}
 				}
-				lines.forEach(callback);
 				model.numOfIndices = model.indices.length;
 				model.numOfVertices = model.vertices.length / 3;
 
@@ -410,3 +508,23 @@ function computeNormals(model) {
 	}
 }
 
+function updateState(){
+	state.diffuseColor = $('#diffuse > input').val().hexToRGB();
+	state.specularColor = $('#specular > input').val().hexToRGB();
+	state.specularPower = parseFloat($('#specularPower > input').val());
+	state.lightColor = $('#lightColor > input').val().hexToRGB();
+	state.lightPosition = [parseFloat($('#lightPosition > #X').val()), 
+	parseFloat($('#lightPosition > #Y').val()),
+	parseFloat($('#lightPosition > #Z').val())];
+	console.log(state.specularPower);
+}
+
+String.prototype.hexToRGB = function(){
+	var aRgbHex = this.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/);
+    var aRgb = [
+        parseInt(aRgbHex[1], 16) / 255.0,
+        parseInt(aRgbHex[2], 16) / 255.0,
+        parseInt(aRgbHex[3], 16) / 255.0
+	];
+    return aRgb;
+}

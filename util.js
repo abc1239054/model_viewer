@@ -1,4 +1,4 @@
-function updateState() {
+/*function updateState() {
     var speed = 0.2;
     if (state.ui.pressedKeys[37]) {
       // left
@@ -13,7 +13,7 @@ function updateState() {
       // up
       state.app.eye.y -= speed;
     }
-  }
+  }*/
 
 function keydown(event) {
 	state.ui.pressedKeys[event.keyCode] = true;
