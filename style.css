@@ -1,3 +1,7 @@
+* {
+    font-family: 'Roboto';
+}
+
 html, body, h3{ 
     margin: 0; 
     padding: 0;
@@ -67,5 +71,10 @@ html, body, h3{
 
 span {
     display:inline-block;
+}
+
+.settingItem {
+    margin-top: 5px;
+    margin-bottom: 5px;
 }
 

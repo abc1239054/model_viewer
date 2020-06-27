@@ -1,3 +1,4 @@
+const modelNameList = ['armadillo.obj', 'bunny.obj', 'teapot.obj'];
 var state = {
 	cubeRotation: 0.0,
 	diffuseColor: [1.0, 1.0, 1.0],
@@ -8,6 +9,7 @@ var state = {
 	ambient: [0.25, 0.0, 0.0],
 	enableGamma: false,
 	showNormals: false,
+	currentModel: modelNameList[0],
 	ui: {
 		dragging: false,
 		mouse: {
@@ -163,7 +165,6 @@ function main() {
 		attribLocations: {
 			vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
 			normal: gl.getAttribLocation(shaderProgram, 'aNormal'),
-			//vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor')
 		},
 		uniformLocations: {
 			p: gl.getUniformLocation(shaderProgram, 'p'),
@@ -182,16 +183,21 @@ function main() {
 
 	initCallbacks();
 
-	const model = loadModel('./3d_models/armadillo.obj');
-	//console.log(model.vertices);
-	//console.log(model.numOfVertices);
-	//console.log(model.numOfNormals);
+	var models = {};
+
+	for(var i = 0; i < modelNameList.length; i++){
+		models[modelNameList[i]] = loadModel('./3d_models/'+modelNameList[i]);
+	}
 
 	// Here's where we call the routine that builds all the
 	// objects we'll be drawing.
-	const buffers = initBuffers(gl, model);
+	var buffers = {};
+	for(var i = 0; i < modelNameList.length; i++){
+		buffers[modelNameList[i]] = initBuffer(gl, models[modelNameList[i]]);
+	}
 
 	var then = 0;
+	var fpsDisplay = $('#fps > span');
 
 	// Draw the scene repeatedly
 	function render(now) {
@@ -199,8 +205,10 @@ function main() {
 		const deltaTime = now - then;
 		then = now;
 		updateState();
+		const fps = 1 / deltaTime; 
+		fpsDisplay.text(fps.toFixed(0));
 
-		drawScene(gl, programInfo, buffers, deltaTime, model);
+		drawScene(gl, programInfo, buffers, deltaTime, models);
 
 		requestAnimationFrame(render);
 	}
@@ -219,12 +227,12 @@ function initCallbacks() {
 }
 
 //
-// initBuffers
+// initBuffer
 //
 // Initialize the buffers we'll need. For this demo, we just
 // have one object -- a simple two-dimensional square.
 //
-function initBuffers(gl, model) {
+function initBuffer(gl, model) {
 
 	// Create a buffer for the square's positions.
 
@@ -269,7 +277,7 @@ function initBuffers(gl, model) {
 //
 // Draw the scene.
 //
-function drawScene(gl, programInfo, buffers, deltaTime, model) {
+function drawScene(gl, programInfo, buffers, deltaTime, models) {
 	gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
 	gl.clearDepth(1.0);                 // Clear everything
 	gl.enable(gl.DEPTH_TEST);           // Enable depth testing
@@ -312,11 +320,6 @@ function drawScene(gl, programInfo, buffers, deltaTime, model) {
 		mv,     // matrix to translate
 		[0.0, 0.0, -3.0]);  // amount to translate
 
-	//glMatrix.mat4.rotate(modelViewMatrix,  // destination matrix
-	//	modelViewMatrix,  // matrix to rotate
-	//	cubeRotation,   // amount to rotate in radians
-	//	[0, 0, 1]); 
-
 	glMatrix.mat4.rotateX(mv,  // destination matrix
 		mv,  // matrix to rotate
 		state.app.angle.x,// amount to rotate in radians
@@ -330,19 +333,20 @@ function drawScene(gl, programInfo, buffers, deltaTime, model) {
 	const mvp = glMatrix.mat4.create();
 
 	glMatrix.mat4.mul(mvp, p, mv);
-
+	
+	var currentUsedBuffer = buffers[state.currentModel];
 
 	// Tell WebGL how to pull out the positions from the position
 	// buffer into the vertexPosition attribute.
 	{
-		gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertexBuffer);
+		gl.bindBuffer(gl.ARRAY_BUFFER, currentUsedBuffer.vertexBuffer);
 
 		gl.vertexAttribPointer(
 			programInfo.attribLocations.vertexPosition,
 			3, gl.FLOAT, false, 0, 0);
 		gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
 
-		gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normalBuffer);
+		gl.bindBuffer(gl.ARRAY_BUFFER, currentUsedBuffer.normalBuffer);
 		gl.vertexAttribPointer(
 			programInfo.attribLocations.normal,
 			3, gl.FLOAT, false, 0, 0);
@@ -397,8 +401,8 @@ function drawScene(gl, programInfo, buffers, deltaTime, model) {
 
 
 	{
-		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indexBuffer);
-		gl.drawElements(gl.TRIANGLES, model.numOfIndices, gl.UNSIGNED_SHORT, 0);
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, currentUsedBuffer.indexBuffer);
+		gl.drawElements(gl.TRIANGLES, models[state.currentModel].numOfIndices, gl.UNSIGNED_SHORT, 0);
 	}
 
 	state.cubeRotation += deltaTime;
@@ -493,7 +497,9 @@ function loadModel(file) {
 
 				computeNormals(model);
 			}
-
+			else {
+				alert('Model not found!');
+			}
 		}
 	}
 	rawFile.send(null);
@@ -554,6 +560,7 @@ function updateState(){
 	state.ambient = $('#ambient > input').val().hexToRGB();
 	state.enableGamma = $('#enableGamma > input').prop('checked');
 	state.showNormals = $('#showNormals > input').prop('checked');
+	state.currentModel = $('#selectModel > select').val();
 	//console.log(state.enableGamma);
 }
 

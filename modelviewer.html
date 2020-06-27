@@ -6,6 +6,7 @@
     <title>ModelViewer</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
 </head>
 
 <body>
@@ -17,10 +18,19 @@
             <h3>Settings</h3>
             <hr/>
             <div id='material' class='settingGroup'>
+                <div id='fps' class="settingItem">
+                    FPS
+                    <span style="position: absolute; right: 10px;">0</span>
+                </div>
                 <div id="diffuse" class="settingItem">
                     Diffuse color
                     <span class="color"></span>
                     <input type="color" class="colorInput" value="#ffffff">
+                </div>
+                <div id="ambient" class="settingItem">
+                    Ambient color
+                    <span class="color" style="background-color: #3f3f3f;"></span>
+                    <input type="color" class="colorInput" value="#3f3f3f" >
                 </div>
                 <div id="specular" class="settingItem">
                     Specular color
@@ -50,12 +60,7 @@
                     <input id="Z" type="range" class="valueInput" value="1" min="-10" max="10" step="0.01" >
                     <span>Z</span>
                     <span class="value">1.00</span>
-                </div>
-                <div id="ambient" class="settingItem">
-                    Ambient color
-                    <span class="color" style="background-color: #3f3f3f;"></span>
-                    <input type="color" class="colorInput" value="#3f3f3f" >
-                </div>
+                </div>    
                 <div id="enableGamma" class="settingItem">
                     Gamma correction
                     <input type="checkbox" value="gamma" style="position: absolute; right: 10px;">
@@ -63,6 +68,14 @@
                 <div id="showNormals" class="settingItem">
                     Show normals
                     <input type="checkbox" value="normal" style="position: absolute; right: 10px;">
+                </div>
+                <div id="selectModel" class="settingItem">
+                    Select model
+                    <select style="position: absolute; right: 10px;">
+                        <option value="armadillo.obj">armadillo</option>
+                        <option value="bunny.obj">bunny</option>
+                        <option value="teapot.obj">teapot</option>
+                    </select>
                 </div>
             </div>
         </div>
