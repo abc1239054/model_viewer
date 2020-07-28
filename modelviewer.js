@@ -7,8 +7,11 @@ var state = {
 	lightColor: [1.0, 1.0, 1.0],
 	lightPosition: [1.0, 1.0, 1.0],
 	ambient: [0.25, 0.0, 0.0],
+	modelColor: [1.0, 0.0, 0.0],
 	enableGamma: false,
 	showNormals: false,
+	lightSource: 0,
+	limit: 90.0,
 	currentModel: modelNameList[0],
 	ui: {
 		dragging: false,
@@ -61,11 +64,13 @@ function main() {
 	uniform mat4 p;
 	uniform mat4 mvp;
 	uniform vec3 lightPosition;
+	
+	
 
 	varying vec4 vColor;
 	varying vec3 vNormal;
 	varying vec3 normal;
-	varying vec3 lightDir;
+	varying vec3 lightToP;
 	varying vec3 eye;
 
     void main() {
@@ -75,10 +80,13 @@ function main() {
     	vec3 position = vec3(mv * vec4(aVertexPosition, 1.0));
 
     	// Calculate the view-space normal
-    	normal = vec3(mv * vec4(aNormal, 0.0));
+		normal = vec3(mv * vec4(aNormal, 0.0));
+	
 
-    	// Calculate the view-space light direction
-    	lightDir = lightPosition - position;
+		// Calculate the view-space light direction
+		lightToP = lightPosition - position;
+		
+		
 
     	// Calculate the vector to viewer's eye
     	eye = -position;
@@ -99,45 +107,77 @@ function main() {
 	uniform float specularPower;
 	uniform vec3 lightColor3;
 	uniform vec3 ambient3;
+	uniform float limit;
+	uniform vec3 lightPosition;
+	uniform vec3 modelColor3;
 
 	uniform bool enableGamma;
 	uniform bool showNormals;
+	uniform int lightSource;
 
 	varying vec4 vColor;
 	varying vec3 vNormal;
 	varying vec3 normal;
-	varying vec3 lightDir;
+	varying vec3 lightToP;
 	varying vec3 eye;
 
     void main() {
-		vec4 diffuseColor = vec4(diffuseColor3, 1.0);
-		vec4 lightColor = vec4(lightColor3, 1.0);
-		vec4 specularColor = vec4(specularColor3, 1.0);
-		vec4 ambient = vec4(ambient3, 1.0);
+		vec4 lighting;
+		vec4 modelColor = vec4(modelColor3, 1.0);
 
-		vec3 l = normalize(lightDir);
-    	vec3 n = normalize(normal);
-		vec3 e = normalize(eye);
+		if(lightSource == 0 || lightSource == 2){
+			vec4 diffuseColor = vec4(diffuseColor3, 1.0);
+			vec4 lightColor = vec4(lightColor3, 1.0);
+			vec4 specularColor = vec4(specularColor3, 1.0);
+			vec4 ambient = vec4(ambient3, 1.0);
+			
+
+			vec3 l = normalize(lightToP);
+    		vec3 n = normalize(normal);
+			vec3 e = normalize(eye);
 		
-		vec3 r = reflect(-e, n);
+			vec3 r = reflect(-e, n);
 
-		float lambertian = max(dot(l, n), 0.0);
-    	vec4 diffuse = lambertian * diffuseColor * lightColor;
+			float lambertian = max(dot(l, n), 0.0);
+    		vec4 diffuse = lambertian * diffuseColor * lightColor;
 
-		vec4 specular = vec4(0.0);
-		
-		if (lambertian > 0.0) {
-			vec3 h = normalize(l + e);
-			specular = specularColor * pow(max(dot(h, n), 0.0), specularPower) * lightColor;
+			vec4 specular = vec4(0.0);
+
+			if (lambertian > 0.0) {
+				vec3 h = normalize(l + e);
+				specular = specularColor * pow(max(dot(h, n), 0.0), specularPower) * lightColor;
+			}
+
+			vec3 lp = normalize(lightPosition);
+			float dotTmp = dot(-lp, l);
+			if (lightSource == 2){
+				if ( dotTmp >= limit){
+					lighting = ambient + diffuse + specular;
+				}
+				else if ( dotTmp < limit && dotTmp >= limit - 0.05 ){
+					float frac = smoothstep(limit - 0.05, limit, dotTmp);
+					lighting = vec4(frac * (ambient + diffuse + specular).xyz, 1.0);
+				} 
+				else {
+					lighting = vec4(0.0, 0.0, 0.0, 1.0);
+				}
+			} else {
+				lighting = ambient + diffuse + specular;
+			}
+			
+			
+		} else {
+			float dotOfNormalLight = dot(normal, lightPosition);
+			lighting = vec4(dotOfNormalLight, dotOfNormalLight, dotOfNormalLight, 1.0);
 		}
-	
+
 		vec4 color;
 
 		if (showNormals) {
-			color = vColor + diffuse + specular;
+			color = vColor * lighting;
 		} 
 		else {
-			color = ambient + diffuse + specular;
+			color = modelColor * lighting;
 		}
 
 		vec4 clibratedColor;
@@ -149,7 +189,9 @@ function main() {
 			clibratedColor = color;
 		}
 
-      	gl_FragColor = clibratedColor;
+		gl_FragColor = clibratedColor;
+
+      	
     }
   `;
 
@@ -176,8 +218,11 @@ function main() {
 			lightColor: gl.getUniformLocation(shaderProgram, 'lightColor3'),
 			lightPosition: gl.getUniformLocation(shaderProgram, 'lightPosition'),
 			ambient: gl.getUniformLocation(shaderProgram, 'ambient3'),
+			modelColor: gl.getUniformLocation(shaderProgram, 'modelColor3'),
 			enableGamma: gl.getUniformLocation(shaderProgram, 'enableGamma'),
 			showNormals: gl.getUniformLocation(shaderProgram, 'showNormals'),
+			lightSource: gl.getUniformLocation(shaderProgram, 'lightSource'),
+			limit: gl.getUniformLocation(shaderProgram, 'limit'),
 		},
 	};
 
@@ -216,6 +261,20 @@ function main() {
 
 }
 
+function resize(canvas) {
+	// Lookup the size the browser is displaying the canvas.
+	var displayWidth  = canvas.clientWidth;
+	var displayHeight = canvas.clientHeight;
+   
+	// Check if the canvas is not the same size.
+	if (canvas.width  != displayWidth ||
+		canvas.height != displayHeight) {
+   
+	  // Make the canvas the same size
+	  canvas.width  = displayWidth;
+	  canvas.height = displayHeight;
+	}
+}
 
 function initCallbacks() {
 	document.onkeydown = keydown;
@@ -278,6 +337,10 @@ function initBuffer(gl, model) {
 // Draw the scene.
 //
 function drawScene(gl, programInfo, buffers, deltaTime, models) {
+	resize(gl.canvas);
+
+	gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+	
 	gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
 	gl.clearDepth(1.0);                 // Clear everything
 	gl.enable(gl.DEPTH_TEST);           // Enable depth testing
@@ -392,12 +455,20 @@ function drawScene(gl, programInfo, buffers, deltaTime, models) {
 	gl.uniform3fv(
 		programInfo.uniformLocations.ambient,
 		state.ambient);
+	gl.uniform3fv(
+		programInfo.uniformLocations.modelColor,
+		state.modelColor);
+	gl.uniform1i(programInfo.uniformLocations.lightSource,
+		state.lightSource);
 	gl.uniform1i(
 		programInfo.uniformLocations.enableGamma,
 		state.enableGamma);
 	gl.uniform1i(
 		programInfo.uniformLocations.showNormals,
 		state.showNormals);
+	gl.uniform1f(
+		programInfo.uniformLocations.limit,
+		state.limit);
 
 
 	{
@@ -554,14 +625,16 @@ function updateState(){
 	state.specularColor = $('#specular > input').val().hexToRGB();
 	state.specularPower = parseFloat($('#specularPower > input').val());
 	state.lightColor = $('#lightColor > input').val().hexToRGB();
-	state.lightPosition = [parseFloat($('#lightPosition > #X').val()), 
-	parseFloat($('#lightPosition > #Y').val()),
-	parseFloat($('#lightPosition > #Z').val())];
+	state.lightPosition = [parseFloat($('#lightPosition > .X').val()), 
+	parseFloat($('#lightPosition > .Y').val()),
+	parseFloat($('#lightPosition > .Z').val())];
 	state.ambient = $('#ambient > input').val().hexToRGB();
+	state.modelColor = $('#modelColor > input').val().hexToRGB();
+	state.lightSource = parseInt($('#lightSource > select').val());
 	state.enableGamma = $('#enableGamma > input').prop('checked');
 	state.showNormals = $('#showNormals > input').prop('checked');
 	state.currentModel = $('#selectModel > select').val();
-	//console.log(state.enableGamma);
+	state.limit = Math.cos(parseFloat($('#limit > #angle').val()) * Math.PI / 180);
 }
 
 String.prototype.hexToRGB = function(){

@@ -22,6 +22,11 @@
                     FPS
                     <span style="position: absolute; right: 10px;">0</span>
                 </div>
+                <div id="modelColor" class="settingItem">
+                    Model color
+                    <span class="color" style="background-color: #ff0000;"></span>
+                    <input type="color" class="colorInput" value="#ff0000">
+                </div>
                 <div id="diffuse" class="settingItem">
                     Diffuse color
                     <span class="color"></span>
@@ -49,18 +54,32 @@
                 </div>
                 <div id="lightPosition" class="settingItem">
                     Light position                          
-                    <input id="X" type="range" class="valueInput" value="1" min="-10" max="10" step="0.01" >
+                    <input type="range" class="valueInput X" value="1" min="-10" max="10" step="0.01" >
                     <span>X</span> 
-                    <span class="value">1.00</span>
+                    <span class="value">0.10</span>
 
-                    <input id="Y" type="range" class="valueInput" value="1" min="-10" max="10" step="0.01" >
+                    <input type="range" class="valueInput Y" value="1" min="-10" max="10" step="0.01" >
                     <span>Y</span>
-                    <span class="value">1.00</span>
+                    <span class="value">0.10</span>
                 
-                    <input id="Z" type="range" class="valueInput" value="1" min="-10" max="10" step="0.01" >
+                    <input type="range" class="valueInput Z" value="1" min="-10" max="10" step="0.01" >
                     <span>Z</span>
-                    <span class="value">1.00</span>
-                </div>    
+                    <span class="value">0.10</span>
+                </div> 
+                <div id="lightSource" class="settingItem">
+                    Light source
+                    <select style="position: absolute; right: 10px;">
+                        <option value="0">point light</option>
+                        <option value="1">dir light</option>
+                        <option value="2">spot light</option>
+                    </select>    
+                </div> 
+                <div id="limit" class="settingItem" style="display: none;">
+                    Limit of light
+                    <input id="angle" type="range" class="valueInput" value="180" min="0" max="180" step="0.1" >
+                    <span>A</span> 
+                    <span class="value">180.0</span>
+                </div>
                 <div id="enableGamma" class="settingItem">
                     Gamma correction
                     <input type="checkbox" value="gamma" style="position: absolute; right: 10px;">
@@ -79,7 +98,7 @@
                 </div>
             </div>
         </div>
-        <div id="description">by Liang-Yan Yu<br>Modified from sample code given by Computer Graphics UU</div>
+        <div id="description">by Liang-Yan Yu<br>Modified from sample code provided by Computer Graphics UU</div>
     </div>
 </body>
 <script>
@@ -100,7 +119,14 @@
             value.text(valueInput.val());
         });
     });
-
+    $('#lightSource > select').on('change', function(event){
+        if($(this).val() == 0){
+            $('#limit').hide();
+        } 
+        else if ($(this).val() == 2){
+            $('#limit').show();
+        }
+    });
 </script>
 <script src="gl-matrix.js"></script>
 <script src="util.js"></script>
